@@ -10,3 +10,9 @@ WebRTC One To Many Broadcast (SFU)
   chrome://flags/#unsafely-treat-insecure-origin-as-secure
 
 - node server or nodemon server
+
+- open.
+  - for broadcaster
+    - http://ip:port
+  - for viewers
+    - http://ip:port/viewer.html 
