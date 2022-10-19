@@ -16,6 +16,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.post("/consumer", async({ body }, res) => {
+    console.log("consumer");
     const peer = new webrtc.RTCPeerConnection({
         iceServers: [{
             urls: "stun:stun.stunprotocol.org"
@@ -34,6 +35,7 @@ app.post("/consumer", async({ body }, res) => {
 });
 
 app.post('/broadcast', async({ body }, res) => {
+    console.log("broadcast");
     const peer = new webrtc.RTCPeerConnection({
         iceServers: [{
             urls: "stun:stun.stunprotocol.org"
