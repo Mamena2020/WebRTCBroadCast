@@ -11,7 +11,7 @@ async function init() {
     document.getElementById("video").srcObject = stream;
     document.getElementById("text-container").innerHTML = "Streaming id: " + id;
 
-    const peer = createPeer(id);
+    const peer = await createPeer(id);
     stream.getTracks().forEach(track => peer.addTrack(track, stream));
 }
 
