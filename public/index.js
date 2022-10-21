@@ -5,11 +5,12 @@ window.onload = () => {
 }
 
 async function init() {
-    // const ran = Math.random()
     const id = Math.floor(Math.random() * 100);
 
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     document.getElementById("video").srcObject = stream;
+    document.getElementById("text-container").innerHTML = "Streaming id: " + id;
+
     const peer = createPeer(id);
     stream.getTracks().forEach(track => peer.addTrack(track, stream));
 }
@@ -18,7 +19,8 @@ async function init() {
 function createPeer(id) {
     const peer = new RTCPeerConnection({
         iceServers: [{
-            urls: "stun:stun.stunprotocol.org"
+            // urls: "stun:stun.stunprotocol.org"
+            urls: "stun:stun.l.google.com:19302?transport=tcp"
         }]
     });
     peer.onnegotiationneeded = () => handleNegotiationNeededEvent(peer, id);

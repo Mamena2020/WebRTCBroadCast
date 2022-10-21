@@ -17,7 +17,6 @@ class Broadcaster {
     }
 }
 
-// let mediaStreams;
 
 var broadcasters = [];
 
@@ -33,14 +32,13 @@ app.post('/broadcast', async({ body }, res) => {
         new MediaStream(),
         new webrtc.RTCPeerConnection({
             iceServers: [{
-                urls: "stun:stun.stunprotocol.org"
+                // urls: "stun:stun.stunprotocol.org"
+                urls: "stun:stun.l.google.com:19302?transport=tcp"
             }]
         })
     );
-    // let i = broadcasters.findIndex((e) => e.id == body.id);
-    // if (i >= 0) {
-    // }
     broadcast.peer.ontrack = (e) => handleTrackEvent(e, broadcast);
+
     const desc = new webrtc.RTCSessionDescription(body.sdp);
     await broadcast.peer.setRemoteDescription(desc);
     const answer = await broadcast.peer.createAnswer();
@@ -54,12 +52,11 @@ app.post('/broadcast', async({ body }, res) => {
 });
 
 function handleTrackEvent(e, broadcast) {
+    try {
+        broadcast.stream = e.streams[0];
+    } catch (e) {
 
-    broadcast.stream = e.streams[0];
-    // mediaStreams = e.streams[0];
-
-    // console.log(broadcasters[i].stream);
-
+    }
 };
 
 // ------------------------------------------------------------------------------------------------- consumer
@@ -67,22 +64,21 @@ app.post("/consumer", async({ body }, res) => {
     console.log("consumer");
     const peer = new webrtc.RTCPeerConnection({
         iceServers: [{
-            urls: "stun:stun.stunprotocol.org"
+            // urls: "stun:stun.stunprotocol.org"
+            urls: "stun:stun.l.google.com:19302?transport=tcp"
         }]
     });
     const desc = new webrtc.RTCSessionDescription(body.sdp);
     await peer.setRemoteDescription(desc);
 
-    // mediaStreams.getTracks().forEach(track => peer.addTrack(track, mediaStreams));
-    let i = broadcasters.findIndex((e) => e.id == body.id)
-        // let mediaStreams;
-        // if (i >= 0) {
-    console.log("broadcast exist" + broadcasters[i].id)
-        // const _mediaStreams = mediaStreams;
-        // broadcasters[i].stream.getTracks().forEach(track => peer.addTrack(track, broadcasters[i].stream));
-        // }
-        // _mediaStreams.getTracks().forEach(track => peer.addTrack(track, _mediaStreams));
-    broadcasters[i].stream.getTracks().forEach(track => peer.addTrack(track, broadcasters[i].stream));
+    try {
+        let i = broadcasters.findIndex((e) => e.id == body.id)
+        console.log("broadcast exist" + broadcasters[i].id)
+        broadcasters[i].stream.getTracks().forEach(track => peer.addTrack(track, broadcasters[i].stream));
+
+    } catch (e) {
+
+    }
 
     const answer = await peer.createAnswer();
     await peer.setLocalDescription(answer);
@@ -95,8 +91,6 @@ app.post("/consumer", async({ body }, res) => {
 // -------------------------------------------------------------------------------------------------
 app.get("/list", (req, res) => {
     const data = listBroadCast();
-    // res.setHeader('Content-Type', 'application/json');
-    // res.end(JSON.stringify({ list: data }));
     res.json(data);
 })
 
@@ -112,4 +106,4 @@ function listBroadCast() {
 // -------------------------------------------------------------------------------------------------
 app.listen(port,
     host,
-    () => console.log('server started'));
+    () => console.log('server started: ' + host + ":" + port));

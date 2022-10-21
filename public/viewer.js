@@ -2,7 +2,6 @@ window.onload = () => {
     // document.getElementById('my-button').onclick = () => {
     //     init();
     // }
-
     showList();
 }
 
@@ -15,7 +14,8 @@ async function init(id) {
 function createPeer(id) {
     const peer = new RTCPeerConnection({
         iceServers: [{
-            urls: "stun:stun.stunprotocol.org"
+            // urls: "stun:stun.stunprotocol.org"
+            urls: "stun:stun.l.google.com:19302?transport=tcp"
         }]
     });
     peer.ontrack = handleTrackEvent;
@@ -31,7 +31,6 @@ async function handleNegotiationNeededEvent(peer, id) {
         sdp: peer.localDescription,
         id: id
     };
-
     const { data } = await axios.post('/consumer', payload);
     const desc = new RTCSessionDescription(data.sdp);
     peer.setRemoteDescription(desc).catch(e => console.log(e));
@@ -43,26 +42,22 @@ function handleTrackEvent(e) {
 };
 
 // -----------------------------------------------------------------------------
-function view(id) {
+function watch(id) {
     init(id)
 }
 // -----------------------------------------------------------------------------
 async function showList() {
     const data = await axios.get("/list");
-    // console.log(data.data);
     var html = `<ul style="list-style-type: none;">`;
     data.data.forEach((e) => {
         console.log(e);
         html += `<li style="margin-top:4px;">
         <button id='view-` + e + `'
-        onClick="view(` + e + `)"
+        onClick="watch(` + e + `)"
         >Watch ` + e + `</button>
         </li>`
-
     });
     html += "</ul>"
-
-
     document.getElementById('list-container').innerHTML += html
 }
 // -----------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 # WebRTCBroadCast
 WebRTC One To Many Broadcast (SFU)
+"stun:stun.l.google.com:19302"
 
 
 - clone this repo.
