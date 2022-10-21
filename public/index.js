@@ -5,29 +5,33 @@ window.onload = () => {
 }
 
 async function init() {
+    // const ran = Math.random()
+    const id = Math.floor(Math.random() * 100);
+
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     document.getElementById("video").srcObject = stream;
-    const peer = createPeer();
+    const peer = createPeer(id);
     stream.getTracks().forEach(track => peer.addTrack(track, stream));
 }
 
 
-function createPeer() {
+function createPeer(id) {
     const peer = new RTCPeerConnection({
         iceServers: [{
             urls: "stun:stun.stunprotocol.org"
         }]
     });
-    peer.onnegotiationneeded = () => handleNegotiationNeededEvent(peer);
+    peer.onnegotiationneeded = () => handleNegotiationNeededEvent(peer, id);
 
     return peer;
 }
 
-async function handleNegotiationNeededEvent(peer) {
+async function handleNegotiationNeededEvent(peer, id) {
     const offer = await peer.createOffer();
     await peer.setLocalDescription(offer);
     const payload = {
-        sdp: peer.localDescription
+        sdp: peer.localDescription,
+        id: id
     };
 
     const { data } = await axios.post('/broadcast', payload);
