@@ -8,7 +8,8 @@ window.onload = () => {
 async function init(id) {
     console.log("start");
     const peer = createPeer(id);
-    peer.addTransceiver("video", { direction: "recvonly" })
+    // peer.addTransceiver("video", { direction: "recvonly" })
+    peer.addTransceiver("video")
 }
 
 function createPeer(id) {
@@ -42,8 +43,10 @@ function handleTrackEvent(e) {
 };
 
 // -----------------------------------------------------------------------------
-function watch(id) {
+function watch(e) {
+    var id = e.getAttribute("data");
     init(id)
+    document.getElementById("text-container").innerHTML = "Streaming on id:" + id
 }
 // -----------------------------------------------------------------------------
 async function showList() {
@@ -52,8 +55,8 @@ async function showList() {
     data.data.forEach((e) => {
         console.log(e);
         html += `<li style="margin-top:4px;">
-        <button id='view-` + e + `'
-        onClick="watch(` + e + `)"
+        <button data='` + e + `' id='view-` + e + `'
+        onClick="watch(this)"
         >Watch ` + e + `</button>
         </li>`
     });
