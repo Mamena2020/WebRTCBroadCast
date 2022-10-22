@@ -1,27 +1,38 @@
 window.onload = () => {
-    // document.getElementById('my-button').onclick = () => {
-    //     init();
-    // }
     showList();
 }
 
 async function init(id) {
     console.log("start");
-    const peer = createPeer(id);
-    // peer.addTransceiver("video", { direction: "recvonly" })
-    peer.addTransceiver("video")
-    console.log(peer.connectionState)
+    const peer = await createPeer(id);
+    peer.onicecandidateerror = (e) => {
+
+            console.log("error1")
+            console.log(e)
+        }
+        // peer.onnegotiationneeded = (e) => {
+        //     console.log("error2")
+        //     console.log(e)
+        // }
+
 }
 
-function createPeer(id) {
+async function createPeer(id) {
     const peer = new RTCPeerConnection({
         iceServers: [{
-            // urls: "stun:stun.stunprotocol.org"
-            urls: "stun:stun.l.google.com:19302?transport=tcp"
+            urls: "stun:stun.stunprotocol.org"
+                // urls: "stun:stun.l.google.com:19302?transport=tcp"
         }]
+    }, {
+        "mandatory": {
+            "OfferToReceiveAudio": true,
+            "OfferToReceiveVideo": true,
+        },
+        "optional": [],
     });
+    peer.addTransceiver("video", { direction: "recvonly" })
     peer.ontrack = handleTrackEvent;
-    peer.onnegotiationneeded = () => handleNegotiationNeededEvent(peer, id);
+    peer.onnegotiationneeded = async() => await handleNegotiationNeededEvent(peer, id);
 
 
     return peer;
@@ -36,7 +47,7 @@ async function handleNegotiationNeededEvent(peer, id) {
     };
     const { data } = await axios.post('/consumer', payload);
     const desc = new RTCSessionDescription(data.sdp);
-    peer.setRemoteDescription(desc).catch(e => console.log(e));
+    await peer.setRemoteDescription(desc).catch(e => console.log(e));
 }
 
 function handleTrackEvent(e) {

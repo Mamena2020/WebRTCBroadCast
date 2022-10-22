@@ -9,6 +9,7 @@ const bodyParser = require('body-parser');
 const webrtc = require("wrtc");
 const { MediaStream } = require('wrtc');
 const { v4: uuidv4 } = require('uuid');
+const sdpTransform = require('sdp-transform');
 
 class Broadcaster {
     constructor(_id = null, _stream = new MediaStream(), _peer = new webrtc.RTCPeerConnection(),
@@ -53,10 +54,26 @@ app.post('/broadcast', async({ body }, res) => {
     let i = await broadcastIndex(id)
     if (i >= 0) {
         broadcasters[i].peer.ontrack = (e) => broadcasters[i].stream = e.streams[0];
-        const desc = new webrtc.RTCSessionDescription(body.sdp);
-        await broadcasters[i].peer.setRemoteDescription(desc);
-        const answer = await broadcasters[i].peer.createAnswer();
-        await broadcasters[i].peer.setLocalDescription(answer);
+
+        broadcasters[i].peer.onIceCandidate = (e) => {
+            if (e.candidate != null) {
+                console.log("----onIceCandidate")
+                console.log(JSON.stringify({
+                    'candidate': e.candidate.toString(),
+                    'sdpMid': e.sdpMid.toString(),
+                    'sdpMlineIndex': e.sdpMlineIndex,
+                }))
+                console.log("----onIceCandidate")
+            }
+        }
+        broadcasters[i].peer.onIceConnectionState = (e) => {
+            console.log("----onIceConnectionState")
+            console.log(e)
+            console.log("----onIceConnectionState")
+        }
+
+
+        await broadcastOnnegotiationneeded(i, body.sdp)
         const payload = {
             sdp: broadcasters[i].peer.localDescription,
             id: id
@@ -73,13 +90,34 @@ async function addBroadcast(id) {
         new MediaStream(),
         new webrtc.RTCPeerConnection({
             iceServers: [{
-                // urls: "stun:stun.stunprotocol.org"
-                urls: "stun:stun.l.google.com:19302?transport=tcp"
+                urls: "stun:stun.stunprotocol.org"
+                    // urls: "stun:stun.l.google.com:19302?transport=tcp"
             }]
+        }, {
+            "mandatory": {
+                "OfferToReceiveAudio": true,
+                "OfferToReceiveVideo": true,
+            },
+            "optional": [],
         })
     );
+
+
+
     await broadcasters.push(broadcast);
 }
+
+async function broadcastOnnegotiationneeded(i, sdp) {
+    const desc = new webrtc.RTCSessionDescription(sdp);
+    await broadcasters[i].peer.setRemoteDescription(desc);
+    const answer = await broadcasters[i].peer.createAnswer({ 'offerToReceiveVideo': 1 });
+    await broadcasters[i].peer.setLocalDescription(answer);
+    console.log(broadcasters[i].peer.localDescription.type)
+        // const session = sdpTransform.parse(String(broadcasters[i].peer.localDescription.sdp))
+    const session = sdpTransform.parse(String(answer.sdp))
+    console.log(session)
+}
+
 
 async function broadcastIndex(id) {
     let x = -1;
@@ -114,7 +152,6 @@ app.post("/consumer", async({ body }, res) => {
         }
         if (x >= 0 && i >= 0) {
 
-            // broadcasters[i].consumers[x].peer.onnegotiationneeded = async() => consumerOnnegotiationneeded(i, x, body.sdp)
             await consumerOnnegotiationneeded(i, x, body.sdp)
             const payload = {
                 sdp: broadcasters[i].consumers[x].peer.localDescription
@@ -136,6 +173,8 @@ async function consumerOnnegotiationneeded(i, x, sdp) {
     broadcasters[i].stream.getTracks().forEach(track => broadcasters[i].consumers[x].peer.addTrack(track, broadcasters[i].stream));
     const answer = await broadcasters[i].consumers[x].peer.createAnswer();
     await broadcasters[i].consumers[x].peer.setLocalDescription(answer);
+    const session = sdpTransform.parse(String(answer.sdp))
+    console.log(session)
 
 }
 
@@ -143,13 +182,17 @@ async function addConsumer(indexBroadcast) {
     var id = uuidv4()
     var consumer = new Consumer(id, new webrtc.RTCPeerConnection({
         iceServers: [{
-            // urls: "stun:stun.stunprotocol.org"
-            urls: "stun:stun.l.google.com:19302?transport=tcp"
+            urls: "stun:stun.stunprotocol.org"
+                // urls: "stun:stun.l.google.com:19302?transport=tcp"
         }]
+    }, {
+        "mandatory": {
+            "OfferToReceiveAudio": true,
+            "OfferToReceiveVideo": true,
+        },
+        "optional": [],
     }))
 
-    // console.log("consumer.peer")
-    // console.log(consumer.peer)
     if (consumer.peer != undefined || consumer.peer != "undefined" || consumer.peer != null) {
         await broadcasters[indexBroadcast].consumers.push(consumer);
         return await consumerIndex(indexBroadcast, id)
@@ -167,31 +210,6 @@ async function consumerIndex(indexBroadcast, id) {
     }
     return x;
 }
-// async function consumerIndex(id) {
-//     let x = -1;
-//     for (let i = 0; i < consumers.length; i++) {
-//         if (consumers[i].id == id) {
-//             x = i;
-//             break;
-//         }
-//     }
-//     return x;
-// }
-// async function consumerRemove(id) {
-//     let x = -1;
-//     for (let i = 0; i < consumers.length; i++) {
-//         if (consumers[i].id == id) {
-//             x = i;
-//             break;
-//         }
-//     }
-
-//     if (x >= 0) {
-//         console.log("remove ")
-//         consumers.splice(x, 1);
-//     }
-
-// }
 
 // -------------------------------------------------------------------------------------------------
 app.get("/list", (req, res) => {
