@@ -10,6 +10,7 @@ async function init(id) {
     const peer = createPeer(id);
     // peer.addTransceiver("video", { direction: "recvonly" })
     peer.addTransceiver("video")
+    console.log(peer.connectionState)
 }
 
 function createPeer(id) {
@@ -21,6 +22,7 @@ function createPeer(id) {
     });
     peer.ontrack = handleTrackEvent;
     peer.onnegotiationneeded = () => handleNegotiationNeededEvent(peer, id);
+
 
     return peer;
 }

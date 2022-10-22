@@ -11,17 +11,19 @@ const { MediaStream } = require('wrtc');
 const { v4: uuidv4 } = require('uuid');
 
 class Broadcaster {
-    constructor(_id = null, _stream = new MediaStream(), _peer = new webrtc.RTCPeerConnection()) {
+    constructor(_id = null, _stream = new MediaStream(), _peer = new webrtc.RTCPeerConnection(),
+        _consumers = []
+    ) {
         this.id = _id
         this.stream = _stream
         this.peer = _peer
+        this.consumers = _consumers
     }
 }
 
 class Consumer {
-    constructor(_id = null, _broadcast_id = null, _peer = new webrtc.RTCPeerConnection()) {
+    constructor(_id = null, _peer = new webrtc.RTCPeerConnection()) {
         this.id = _id
-        this.broadcast_id = _broadcast_id
         this.peer = _peer
     }
 }
@@ -35,30 +37,19 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // ------------------------------------------------------------------------------------------------- broadcasters
 app.post('/broadcast', async({ body }, res) => {
-    console.log("new broadcast");
     var id = uuidv4()
-    var broadcast = new Broadcaster(
-        id,
-        new MediaStream(),
-        new webrtc.RTCPeerConnection({
-            iceServers: [{
-                // urls: "stun:stun.stunprotocol.org"
-                urls: "stun:stun.l.google.com:19302?transport=tcp"
-            }]
-        })
-    );
-    // broadcast.peer.ontrack = (e) => handleTrackEvent(e, broadcast);
-    //    broadcast.peer.ontrack = (e) => broadcast.stream = e.streams[0];
-    //     const desc = new webrtc.RTCSessionDescription(body.sdp);
-    //     await broadcast.peer.setRemoteDescription(desc);
-    //     const answer = await broadcast.peer.createAnswer();
-    //     await broadcast.peer.setLocalDescription(answer);
-    //     const payload = {
-    //         sdp: broadcast.peer.localDescription
-    //     }
-    //     broadcasters.push(broadcast);
-    await broadcasters.push(broadcast);
-    // let i = await broadcasters.findIndex((e) => e.id == body.id)
+        // broadcast.peer.ontrack = (e) => handleTrackEvent(e, broadcast);
+        //    broadcast.peer.ontrack = (e) => broadcast.stream = e.streams[0];
+        //     const desc = new webrtc.RTCSessionDescription(body.sdp);
+        //     await broadcast.peer.setRemoteDescription(desc);
+        //     const answer = await broadcast.peer.createAnswer();
+        //     await broadcast.peer.setLocalDescription(answer);
+        //     const payload = {
+        //         sdp: broadcast.peer.localDescription
+        //     }
+        //     broadcasters.push(broadcast);
+    await addBroadcast(id)
+        // let i = await broadcasters.findIndex((e) => e.id == body.id)
     let i = await broadcastIndex(id)
     if (i >= 0) {
         broadcasters[i].peer.ontrack = (e) => broadcasters[i].stream = e.streams[0];
@@ -73,6 +64,22 @@ app.post('/broadcast', async({ body }, res) => {
         res.json(payload);
     }
 });
+
+async function addBroadcast(id) {
+    console.log("new broadcast");
+
+    var broadcast = new Broadcaster(
+        id,
+        new MediaStream(),
+        new webrtc.RTCPeerConnection({
+            iceServers: [{
+                // urls: "stun:stun.stunprotocol.org"
+                urls: "stun:stun.l.google.com:19302?transport=tcp"
+            }]
+        })
+    );
+    await broadcasters.push(broadcast);
+}
 
 async function broadcastIndex(id) {
     let x = -1;
@@ -97,74 +104,79 @@ var consumers = [];
 // ------------------------------------------------------------------------------------------------- consumer
 app.post("/consumer", async({ body }, res) => {
     console.log("consumer");
-    // let i = await broadcastIndex(body.id)
-    // var peer = new webrtc.RTCPeerConnection({
-    //     iceServers: [{
-    //         // urls: "stun:stun.stunprotocol.org"
-    //         urls: "stun:stun.l.google.com:19302?transport=tcp"
-    //     }]
-    // });
-    // var desc = new webrtc.RTCSessionDescription(body.sdp);
-    // await peer.setRemoteDescription(desc);
-    // try {
-    //     if (i >= 0) {
-    //         console.log("broadcast exist" + broadcasters[i].id)
-    //         console.log(broadcasters[i].stream)
-    //         broadcasters[i].stream.getTracks().forEach(track => peer.addTrack(track, broadcasters[i].stream));
-    //     }
-    // } catch (e) {
-    //     console.log(e)
-    // }
-    // const answer = await peer.createAnswer();
-    // await peer.setLocalDescription(answer);
-    // const payload = {
-    //     sdp: peer.localDescription
-    // }
-    let i = await broadcastIndex(body.id)
-    var id = uuidv4()
-    var consumer = new Consumer(
-        id,
-        body.id,
-        new webrtc.RTCPeerConnection({
-            iceServers: [{
-                // urls: "stun:stun.stunprotocol.org"
-                urls: "stun:stun.l.google.com:19302?transport=tcp"
-            }]
-        })
-    )
-    consumers.push(consumer);
-    let x = await consumerIndex(id)
-    if (x >= 0 && i >= 0) {
-        var desc = new webrtc.RTCSessionDescription(body.sdp);
-        await consumers[x].peer.setRemoteDescription(desc);
-        try {
-            // console.log("broadcast exist" + broadcasters[i].id)
-            console.log(broadcasters[i].stream)
-            broadcasters[i].stream.getTracks().forEach(track => consumers[x].peer.addTrack(track, broadcasters[i].stream));
 
-        } catch (e) {
-            console.log(e)
+    try {
+
+        let i = await broadcastIndex(body.id)
+        let x
+        if (i >= 0) {
+            x = await addConsumer(i)
         }
-        const answer = await consumers[x].peer.createAnswer();
-        await consumers[x].peer.setLocalDescription(answer);
-        const payload = {
-            sdp: consumers[x].peer.localDescription
+        if (x >= 0 && i >= 0) {
+
+            // broadcasters[i].consumers[x].peer.onnegotiationneeded = async() => consumerOnnegotiationneeded(i, x, body.sdp)
+            await consumerOnnegotiationneeded(i, x, body.sdp)
+            const payload = {
+                sdp: broadcasters[i].consumers[x].peer.localDescription
+            }
+
+            res.json(payload);
+        } else {
+            console.log("not exist")
         }
-        res.json(payload);
+    } catch (e) {
+        console.log(e)
     }
-    console.log("not exist")
 
 });
-async function consumerIndex(id) {
+
+async function consumerOnnegotiationneeded(i, x, sdp) {
+    var desc = new webrtc.RTCSessionDescription(sdp);
+    await broadcasters[i].consumers[x].peer.setRemoteDescription(desc);
+    broadcasters[i].stream.getTracks().forEach(track => broadcasters[i].consumers[x].peer.addTrack(track, broadcasters[i].stream));
+    const answer = await broadcasters[i].consumers[x].peer.createAnswer();
+    await broadcasters[i].consumers[x].peer.setLocalDescription(answer);
+
+}
+
+async function addConsumer(indexBroadcast) {
+    var id = uuidv4()
+    var consumer = new Consumer(id, new webrtc.RTCPeerConnection({
+        iceServers: [{
+            // urls: "stun:stun.stunprotocol.org"
+            urls: "stun:stun.l.google.com:19302?transport=tcp"
+        }]
+    }))
+
+    // console.log("consumer.peer")
+    // console.log(consumer.peer)
+    if (consumer.peer != undefined || consumer.peer != "undefined" || consumer.peer != null) {
+        await broadcasters[indexBroadcast].consumers.push(consumer);
+        return await consumerIndex(indexBroadcast, id)
+    }
+    return -1;
+}
+
+async function consumerIndex(indexBroadcast, id) {
     let x = -1;
-    for (let i = 0; i < consumers.length; i++) {
-        if (consumers[i].id == id) {
+    for (let i = 0; i < broadcasters[indexBroadcast].consumers.length; i++) {
+        if (broadcasters[indexBroadcast].consumers[i].id == id) {
             x = i;
             break;
         }
     }
     return x;
 }
+// async function consumerIndex(id) {
+//     let x = -1;
+//     for (let i = 0; i < consumers.length; i++) {
+//         if (consumers[i].id == id) {
+//             x = i;
+//             break;
+//         }
+//     }
+//     return x;
+// }
 // async function consumerRemove(id) {
 //     let x = -1;
 //     for (let i = 0; i < consumers.length; i++) {
