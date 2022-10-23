@@ -15,6 +15,15 @@ window.onload = () => {
     showList();
 }
 
+class TargetPeer {
+    constructor(_broadcast_id = null, _consumer_id = null) {
+        this.broadcast_id = _broadcast_id
+        this.consumer_id = _consumer_id
+    }
+}
+var targetPeer = new TargetPeer();
+
+
 async function init(id) {
     console.log("start");
     const peer = await createPeer(id);
@@ -40,6 +49,19 @@ async function init(id) {
         }
     }
 
+    peer.onicecandidate = (e) => {
+        if (!e || !e.candidate) return;
+        // console.log(e)
+        var newCandidate = {
+            'candidate': String(e.candidate.candidate),
+            'sdpMid': String(e.candidate.sdpMid),
+            'sdpMLineIndex': e.candidate.sdpMLineIndex,
+        }
+        console.log("ice candidate")
+        console.log(newCandidate)
+        addCandidate(newCandidate)
+    }
+
 }
 
 async function createPeer(id) {
@@ -60,6 +82,12 @@ async function handleNegotiationNeededEvent(peer, id) {
         id: id
     };
     const { data } = await axios.post('/consumer', payload);
+    targetPeer = new TargetPeer(
+        data.targetPeer.broadcast_id,
+        data.targetPeer.consumer_id
+    );
+    console.log("targetPeer");
+    console.log(targetPeer);
     const desc = new RTCSessionDescription(data.sdp);
     await peer.setRemoteDescription(desc).catch(e => console.log(e));
 }
@@ -91,3 +119,23 @@ async function showList() {
     document.getElementById('list-container').innerHTML += html
 }
 // -----------------------------------------------------------------------------
+const host = "http://192.168.1.9"
+const port = 5000
+
+var socket = io(host + ":" + port);
+socket.on('from-server', function(message) {
+    console.log(message)
+        // document.body.appendChild(
+        //     document.createTextNode(message.greeting)
+        // );
+    socket.emit('greeting-from-client', {
+        greeting: 'Hello Server'
+    });
+});
+
+function addCandidate(candidate) {
+    socket.emit('add-candidate', {
+        candidate: candidate,
+        targetPeer: targetPeer
+    });
+}

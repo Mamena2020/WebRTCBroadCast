@@ -1,15 +1,22 @@
-const host = "192.168.1.9";
-// const host = "localhost";
-const port = "5000";
+const host = "192.168.1.9"
+    // const host = "localhost";
+const port = "5000"
 
 
-const express = require('express');
-const app = express();
-const bodyParser = require('body-parser');
-const webrtc = require("wrtc");
-const { MediaStream } = require('wrtc');
-const { v4: uuidv4 } = require('uuid');
-const sdpTransform = require('sdp-transform');
+const express = require('express')
+const app = express()
+
+const bodyParser = require('body-parser')
+const webrtc = require("wrtc")
+const { MediaStream } = require('wrtc')
+const { v4: uuidv4 } = require('uuid')
+const sdpTransform = require('sdp-transform')
+
+const http = require('http')
+const server = http.Server(app);
+
+const socketIO = require('socket.io')
+const io = socketIO(server);
 
 
 // const stuntUrl ="stun:stun.l.google.com:19302?transport=tcp"
@@ -50,6 +57,12 @@ class Consumer {
     constructor(_id = null, _peer = new webrtc.RTCPeerConnection()) {
         this.id = _id
         this.peer = _peer
+    }
+}
+class TargetPeer {
+    constructor(_broadcast_id = null, _consumer_id = null) {
+        this.broadcast_id = _broadcast_id
+        this.consumer_id = _consumer_id
     }
 }
 
@@ -108,8 +121,14 @@ async function broadcastOnnegotiationneeded(i, sdp) {
         const answer = await broadcasters[i].peer.createAnswer({ 'offerToReceiveVideo': 1 });
         await broadcasters[i].peer.setLocalDescription(answer);
         const session = sdpTransform.parse(String(answer.sdp))
+            // console.log("answer sdp")
             // console.log(answer.sdp)
+            // console.log("session")
             // console.log(session)
+            // console.log("session encode")
+            // console.log(JSON.stringify(session))
+            // var d = new webrtc.RTCPeerConnection(configurationPeerConnection, offerSdpConstraints)
+            // webrtc.RTCIceCandidate()
     } catch (e) {
         console.log(e)
     }
@@ -162,7 +181,11 @@ app.post("/consumer", async({ body }, res) => {
                 }
             }
             const payload = {
-                sdp: broadcasters[i].consumers[x].peer.localDescription
+                sdp: broadcasters[i].consumers[x].peer.localDescription,
+                targetPeer: new TargetPeer(
+                    broadcasters[i].id,
+                    broadcasters[i].consumers[x].id
+                )
             }
 
             res.json(payload);
@@ -248,6 +271,45 @@ function listBroadCast() {
 }
 
 // -------------------------------------------------------------------------------------------------
-app.listen(port,
+server.listen(port,
     host,
     () => console.log('server started: ' + host + ":" + port));
+// ------------------------------------------------------------------------------------------------- socket
+io.on('connection', async function(socket) {
+
+        console.log("new connection")
+
+        socket.emit("from-server", "halo new consumer")
+            // socket.on('test', () => {
+            //     console.log("testss")
+            // })
+
+        socket.on('add-candidate', (data) => {
+
+            addCandidate(data)
+        })
+
+
+        io.on('disconnect', socket => {
+            console.log("someone disconnected")
+        })
+    })
+    // -------------------------------------------------------------------------------------------------
+
+async function addCandidate(data) {
+    console.log("add candidate")
+    console.log(data)
+    let i = await broadcastIndex(data.targetPeer.broadcast_id)
+    if (i >= 0) {
+        let x = await consumerIndex(i, data.targetPeer.consumer_id)
+        if (x >= 0) {
+            console.log("-------------add candidate exist")
+                // var d = webrtc.RTCPeerConnection(configurationPeerConnection, offerSdpConstraints)
+            try {
+                broadcasters[i].consumers[x].peer.addIceCandidate(new webrtc.RTCIceCandidate(data.candidate))
+            } catch (e) {
+                console.log(e)
+            }
+        }
+    }
+}

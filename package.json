@@ -1,21 +1,23 @@
 {
-  "name": "webrtcbroadcast",
-  "version": "1.0.0",
-  "description": "",
-  "main": "server.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
-  },
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "body-parser": "^1.20.1",
-    "express": "^4.18.2",
-    "node-pre-gyp": "^0.17.0",
-    "nodemon": "^2.0.20",
-    "sdp-transform": "^2.14.1",
-    "uuid": "^9.0.0",
-    "wrtc": "^0.4.7"
-  }
+    "name": "webrtcbroadcast",
+    "version": "1.0.0",
+    "description": "",
+    "main": "server.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "node server.js"
+    },
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "body-parser": "^1.20.1",
+        "express": "^4.18.2",
+        "node-pre-gyp": "^0.17.0",
+        "nodemon": "^2.0.20",
+        "sdp-transform": "^2.14.1",
+        "socket.io": "^4.5.3",
+        "socket.io-client": "^4.5.3",
+        "uuid": "^9.0.0",
+        "wrtc": "^0.4.7"
+    }
 }

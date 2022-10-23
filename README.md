@@ -27,6 +27,7 @@ WebRTC One To Many Broadcast (SFU)
     - https://github.com/coding-with-chaim/webrtc-one-to-many
     - https://github.com/jamalag/flutter-webrtc-part2/blob/master/lib/main.dart
     - https://stackoverflow.com/questions/21233828/detecting-that-the-peers-browser-was-closed-in-a-webrtc-videochat
+    - https://stackoverflow.com/questions/23325510/not-able-to-add-remote-ice-candidate-in-webrtc
   
   - Videos
     - https://www.youtube.com/watch?v=QgPcswKUnXw&list=PL_YW-znSZ_dIeSBA9YiXwb-FtjOhoo-RS&index=11&ab_channel=AmirEshaq
