@@ -24,29 +24,29 @@ class TargetPeer {
 var targetPeer = new TargetPeer();
 
 
+var peer
 async function init(id) {
     console.log("start");
-    const peer = await createPeer(id);
+    peer = await createPeer(id);
 
 
 }
 
 async function createPeer(id) {
-    const peer = new RTCPeerConnection(configurationPeerConnection, offerSdpConstraints);
+    peer = new RTCPeerConnection(configurationPeerConnection, offerSdpConstraints);
     peer.addTransceiver("video", { direction: "recvonly" })
     peer.ontrack = handleTrackEvent;
     peer.onnegotiationneeded = async() => await handleNegotiationNeededEvent(peer, id);
-
-
     return peer;
 }
 
 async function handleNegotiationNeededEvent(peer, id) {
-    const offer = await peer.createOffer();
+    const offer = await peer.createOffer({ 'offerToReceiveVideo': 1 });
     await peer.setLocalDescription(offer);
     const payload = {
         sdp: peer.localDescription,
-        id: id
+        id: id,
+        socket_id: socket_id
     };
     const { data } = await axios.post('/consumer', payload);
     targetPeer = new TargetPeer(
@@ -126,15 +126,18 @@ const host = "http://192.168.1.9"
 const port = 5000
 
 var socket = io(host + ":" + port);
-socket.on('from-server', function(message) {
-    console.log(message)
-        // document.body.appendChild(
-        //     document.createTextNode(message.greeting)
-        // );
-    socket.emit('greeting-from-client', {
-        greeting: 'Hello Server'
-    });
+var socket_id
+
+socket.on('from-server', function(_socket_id) {
+    socket_id = _socket_id
+    console.log("me connected: " + socket_id)
 });
+socket.on("add-candidate-from-server", (message) => {
+    console.log("******add candidate from server")
+    console.log(message)
+    peer.addIceCandidate(new RTCIceCandidate(message))
+    console.log("@@@@@@add candidate from server")
+})
 
 function addCandidate(candidate) {
     socket.emit('add-candidate-consumer', {

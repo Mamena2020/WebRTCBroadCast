@@ -54,9 +54,10 @@ class Broadcaster {
 }
 
 class Consumer {
-    constructor(_id = null, _peer = new webrtc.RTCPeerConnection()) {
+    constructor(_id = null, _peer = new webrtc.RTCPeerConnection(), _socket_id = null) {
         this.id = _id
         this.peer = _peer
+        this.socket_id = _socket_id
     }
 }
 class TargetPeer {
@@ -120,15 +121,7 @@ async function broadcastOnnegotiationneeded(i, sdp) {
         await broadcasters[i].peer.setRemoteDescription(desc);
         const answer = await broadcasters[i].peer.createAnswer({ 'offerToReceiveVideo': 1 });
         await broadcasters[i].peer.setLocalDescription(answer);
-        const session = sdpTransform.parse(String(answer.sdp))
-            // console.log("answer sdp")
-            // console.log(answer.sdp)
-            // console.log("session")
-            // console.log(session)
-            // console.log("session encode")
-            // console.log(JSON.stringify(session))
-            // var d = new webrtc.RTCPeerConnection(configurationPeerConnection, offerSdpConstraints)
-            // webrtc.RTCIceCandidate()
+        // const session = sdpTransform.parse(String(answer.sdp))
     } catch (e) {
         console.log(e)
     }
@@ -163,7 +156,7 @@ app.post("/consumer", async({ body }, res) => {
         let i = await broadcastIndex(body.id)
         let x
         if (i >= 0) {
-            x = await addConsumer(i)
+            x = await addConsumer(i, body.socket_id)
         }
         if (x >= 0 && i >= 0) {
             consumerInList(i)
@@ -181,18 +174,22 @@ app.post("/consumer", async({ body }, res) => {
                 }
             }
 
-            // broadcasters[i].consumers[x].peer.onicecandidate = (e) => {
-            //     if (!e || !e.candidate) return;
-            //     // console.log(e)
-            //     var newCandidate = {
-            //         'candidate': String(e.candidate.candidate),
-            //         'sdpMid': String(e.candidate.sdpMid),
-            //         'sdpMLineIndex': e.candidate.sdpMLineIndex,
-            //     }
-            //     console.log("ice candidate")
-            //     console.log(newCandidate)
-            //     // addCandidateToClient(newCandidate)
-            // }
+            broadcasters[i].consumers[x].peer.onicecandidate = (e) => {
+                if (!e || !e.candidate) return;
+                try {
+                    var newCandidate = {
+                        'candidate': String(e.candidate.candidate),
+                        'sdpMid': String(e.candidate.sdpMid),
+                        'sdpMLineIndex': e.candidate.sdpMLineIndex,
+                    }
+                    console.log("ice candidate")
+                    console.log(newCandidate)
+                    addCandidateToClient(newCandidate, broadcasters[i].consumers[x].socket_id)
+                } catch (e) {
+                    console.log(e)
+                }
+
+            }
             const payload = {
                 sdp: broadcasters[i].consumers[x].peer.localDescription,
                 targetPeer: new TargetPeer(
@@ -225,9 +222,9 @@ async function consumerOnnegotiationneeded(i, x, sdp) {
     // console.log(session)
 }
 
-async function addConsumer(indexBroadcast) {
+async function addConsumer(indexBroadcast, socket_id) {
     var id = uuidv4()
-    var consumer = new Consumer(id, new webrtc.RTCPeerConnection(configurationPeerConnection, offerSdpConstraints))
+    var consumer = new Consumer(id, new webrtc.RTCPeerConnection(configurationPeerConnection, offerSdpConstraints), socket_id)
     consumer.peer.oniceconnectionstatechange
 
     if (consumer.peer != undefined || consumer.peer != "undefined" || consumer.peer != null) {
@@ -288,14 +285,19 @@ server.listen(port,
     host,
     () => console.log('server started: ' + host + ":" + port));
 // ------------------------------------------------------------------------------------------------- socket
+// var sockets = []
+// class UserSocket {
+//     constructor(_id, _socket) {
+//         this.id = _id
+//         this.socket = _socket
+//     }
+// }
+
+
 io.on('connection', async function(socket) {
+        console.log("new connection: " + socket.id)
 
-        console.log("new connection")
-
-        socket.emit("from-server", "halo new consumer")
-            // socket.on('test', () => {
-            //     console.log("testss")
-            // })
+        socket.emit("from-server", socket.id)
 
         socket.on('add-candidate-consumer', (data) => {
             addCandidateConsumer(data)
@@ -305,11 +307,17 @@ io.on('connection', async function(socket) {
         })
 
 
+
         io.on('disconnect', socket => {
             console.log("someone disconnected")
         })
     })
     // -------------------------------------------------------------------------------------------------
+
+function addCandidateToClient(candidate, socket_id) {
+    // io.sockets.connected[socket_id].emit("add-candidate-from-server", candidate)
+    io.to(socket_id).emit("add-candidate-from-server", candidate)
+}
 
 async function addCandidateConsumer(data) {
     console.log("add candidate")
