@@ -1,19 +1,19 @@
 # WebRTCBroadCast
 WebRTC One To Many Broadcast (SFU)
-"stun:stun.l.google.com:19302"
 
 
-- clone this repo.
-- npm update
+
+- Clone this repo.
+  - npm update
 
 - Secure ip local
-    for custom ip local (server.js host) other than localhost, set http://ip to secure on browser chrome.
+  - for custom ip local (server.js host) other than localhost, set http://ip to secure on browser chrome.
     chrome://flags/#unsafely-treat-insecure-origin-as-secure
 
 - Start server
   - node server or nodemon server
 
-- open.
+- Run.
   - for broadcaster
     - http://ip:port
   - for viewers
@@ -22,6 +22,11 @@ WebRTC One To Many Broadcast (SFU)
 - Monitoring Status on browser
     - chrome://webrtc-internals/
 
+- Stunt Servers
+    - "stun:stun.l.google.com:19302"
+    - "stun:stun.stunprotocol.org"
+
+
 - References
   - Code.
     - https://github.com/coding-with-chaim/webrtc-one-to-many
@@ -29,6 +34,9 @@ WebRTC One To Many Broadcast (SFU)
     - https://stackoverflow.com/questions/21233828/detecting-that-the-peers-browser-was-closed-in-a-webrtc-videochat
     - https://stackoverflow.com/questions/23325510/not-able-to-add-remote-ice-candidate-in-webrtc
   
+  - Issues 
+    - https://devscope.io/code/node-webrtc/node-webrtc/issues/713
+
   - Videos
     - https://www.youtube.com/watch?v=QgPcswKUnXw&list=PL_YW-znSZ_dIeSBA9YiXwb-FtjOhoo-RS&index=11&ab_channel=AmirEshaq
     - https://www.youtube.com/watch?v=V9g4MYtCHkY&ab_channel=CodingWithChaim  

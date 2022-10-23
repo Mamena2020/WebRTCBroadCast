@@ -27,6 +27,36 @@ var targetPeer = new TargetPeer();
 async function init(id) {
     console.log("start");
     const peer = await createPeer(id);
+
+
+}
+
+async function createPeer(id) {
+    const peer = new RTCPeerConnection(configurationPeerConnection, offerSdpConstraints);
+    peer.addTransceiver("video", { direction: "recvonly" })
+    peer.ontrack = handleTrackEvent;
+    peer.onnegotiationneeded = async() => await handleNegotiationNeededEvent(peer, id);
+
+
+    return peer;
+}
+
+async function handleNegotiationNeededEvent(peer, id) {
+    const offer = await peer.createOffer();
+    await peer.setLocalDescription(offer);
+    const payload = {
+        sdp: peer.localDescription,
+        id: id
+    };
+    const { data } = await axios.post('/consumer', payload);
+    targetPeer = new TargetPeer(
+        data.targetPeer.broadcast_id,
+        data.targetPeer.consumer_id
+    );
+    console.log("targetPeer");
+    console.log(targetPeer);
+    const desc = new RTCSessionDescription(data.sdp);
+    await peer.setRemoteDescription(desc).catch(e => console.log(e));
     peer.onconnectionstatechange = (e) => {
         console.log("status")
         console.log(e)
@@ -60,36 +90,9 @@ async function init(id) {
         console.log("ice candidate")
         console.log(newCandidate)
         addCandidate(newCandidate)
+        console.log("ice candidate2")
+        peer.addIceCandidate(new RTCIceCandidate(newCandidate))
     }
-
-}
-
-async function createPeer(id) {
-    const peer = new RTCPeerConnection(configurationPeerConnection, offerSdpConstraints);
-    peer.addTransceiver("video", { direction: "recvonly" })
-    peer.ontrack = handleTrackEvent;
-    peer.onnegotiationneeded = async() => await handleNegotiationNeededEvent(peer, id);
-
-
-    return peer;
-}
-
-async function handleNegotiationNeededEvent(peer, id) {
-    const offer = await peer.createOffer();
-    await peer.setLocalDescription(offer);
-    const payload = {
-        sdp: peer.localDescription,
-        id: id
-    };
-    const { data } = await axios.post('/consumer', payload);
-    targetPeer = new TargetPeer(
-        data.targetPeer.broadcast_id,
-        data.targetPeer.consumer_id
-    );
-    console.log("targetPeer");
-    console.log(targetPeer);
-    const desc = new RTCSessionDescription(data.sdp);
-    await peer.setRemoteDescription(desc).catch(e => console.log(e));
 }
 
 function handleTrackEvent(e) {
@@ -134,7 +137,7 @@ socket.on('from-server', function(message) {
 });
 
 function addCandidate(candidate) {
-    socket.emit('add-candidate', {
+    socket.emit('add-candidate-consumer', {
         candidate: candidate,
         targetPeer: targetPeer
     });

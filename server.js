@@ -180,6 +180,19 @@ app.post("/consumer", async({ body }, res) => {
                     console.log(e)
                 }
             }
+
+            // broadcasters[i].consumers[x].peer.onicecandidate = (e) => {
+            //     if (!e || !e.candidate) return;
+            //     // console.log(e)
+            //     var newCandidate = {
+            //         'candidate': String(e.candidate.candidate),
+            //         'sdpMid': String(e.candidate.sdpMid),
+            //         'sdpMLineIndex': e.candidate.sdpMLineIndex,
+            //     }
+            //     console.log("ice candidate")
+            //     console.log(newCandidate)
+            //     // addCandidateToClient(newCandidate)
+            // }
             const payload = {
                 sdp: broadcasters[i].consumers[x].peer.localDescription,
                 targetPeer: new TargetPeer(
@@ -284,9 +297,11 @@ io.on('connection', async function(socket) {
             //     console.log("testss")
             // })
 
-        socket.on('add-candidate', (data) => {
-
-            addCandidate(data)
+        socket.on('add-candidate-consumer', (data) => {
+            addCandidateConsumer(data)
+        })
+        socket.on('add-candidate-broadcaster', (data) => {
+            addCandidateBroadcaster(data)
         })
 
 
@@ -296,20 +311,32 @@ io.on('connection', async function(socket) {
     })
     // -------------------------------------------------------------------------------------------------
 
-async function addCandidate(data) {
+async function addCandidateConsumer(data) {
     console.log("add candidate")
     console.log(data)
     let i = await broadcastIndex(data.targetPeer.broadcast_id)
     if (i >= 0) {
         let x = await consumerIndex(i, data.targetPeer.consumer_id)
         if (x >= 0) {
-            console.log("-------------add candidate exist")
-                // var d = webrtc.RTCPeerConnection(configurationPeerConnection, offerSdpConstraints)
             try {
+                console.log("-------------add candidate exist")
                 broadcasters[i].consumers[x].peer.addIceCandidate(new webrtc.RTCIceCandidate(data.candidate))
             } catch (e) {
                 console.log(e)
             }
+        }
+    }
+}
+async function addCandidateBroadcaster(data) {
+    console.log("add candidate")
+    console.log(data)
+    let i = await broadcastIndex(data.broadcast_id)
+    if (i >= 0) {
+        try {
+            console.log("-------------add candidate exist")
+            broadcasters[i].peer.addIceCandidate(new webrtc.RTCIceCandidate(data.candidate))
+        } catch (e) {
+            console.log(e)
         }
     }
 }
