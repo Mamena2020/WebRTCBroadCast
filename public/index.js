@@ -1,3 +1,19 @@
+// const stuntUrl = "stun:stun.l.google.com:19302"
+const configurationPeerConnection = {
+    iceServers: [{
+        urls: "stun:stun.stunprotocol.org"
+            // urls: "stun:stun.l.google.com:19302?transport=tcp"
+    }]
+}
+
+const offerSdpConstraints = {
+    "mandatory": {
+        "OfferToReceiveAudio": true,
+        "OfferToReceiveVideo": true,
+    },
+    "optional": [],
+}
+
 window.onload = () => {
     document.getElementById('my-button').onclick = () => {
         init();
@@ -11,23 +27,28 @@ async function init() {
 
 
     const peer = await createPeer();
-    if (peer.connectionState == RTCPeerConnection.connectionState) {
-        console.log("s")
-    } else {
-
-        console.log("n")
+    peer.onconnectionstatechange = (e) => {
+        console.log("status")
+        console.log(e)
     }
-    console.log(peer.connectionState)
-        // peer.onicecandidateerror = (e) => {
+    peer.onicecandidateerror = (e) => {
 
-    //         console.log("error1")
-    //         console.log(e)
-    //     }
-    // peer.onnegotiationneeded = (e) => {
-    //     console.log("error2")
-    //     console.log(e)
-    // }
-    console.log(peer.currentRemoteDescription)
+        console.log("error1")
+        console.log(e)
+    }
+    peer.oniceconnectionstatechange = (e) => {
+        try {
+            const connectionStatus = peer.connectionState;
+            if (["disconnected", "failed", "closed"].includes(connectionStatus)) {
+                console.log("disconnected")
+            } else {
+                console.log("still connected")
+            }
+        } catch (e) {
+            console.log(e)
+        }
+    }
+
     stream.getTracks().forEach(track => peer.addTrack(track, stream));
 }
 
@@ -35,18 +56,7 @@ async function init() {
 async function createPeer() {
 
 
-    const peer = new RTCPeerConnection({
-        iceServers: [{
-            urls: "stun:stun.stunprotocol.org"
-                // urls: "stun:stun.l.google.com:19302?transport=tcp"
-        }]
-    }, {
-        "mandatory": {
-            "OfferToReceiveAudio": true,
-            "OfferToReceiveVideo": true,
-        },
-        "optional": [],
-    });
+    const peer = new RTCPeerConnection(configurationPeerConnection, offerSdpConstraints);
     peer.onnegotiationneeded = async() => await handleNegotiationNeededEvent(peer);
 
     return peer;
@@ -55,6 +65,9 @@ async function createPeer() {
 async function handleNegotiationNeededEvent(peer) {
     const offer = await peer.createOffer({ 'offerToReceiveVideo': 1 });
     await peer.setLocalDescription(offer);
+
+
+
     const payload = {
         sdp: peer.localDescription,
     };

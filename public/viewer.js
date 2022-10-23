@@ -1,3 +1,16 @@
+const configurationPeerConnection = {
+    iceServers: [{
+        urls: "stun:stun.stunprotocol.org"
+            // urls: "stun:stun.l.google.com:19302?transport=tcp"
+    }]
+}
+const offerSdpConstraints = {
+    "mandatory": {
+        "OfferToReceiveAudio": true,
+        "OfferToReceiveVideo": true,
+    },
+    "optional": [],
+}
 window.onload = () => {
     showList();
 }
@@ -5,31 +18,32 @@ window.onload = () => {
 async function init(id) {
     console.log("start");
     const peer = await createPeer(id);
+    peer.onconnectionstatechange = (e) => {
+        console.log("status")
+        console.log(e)
+    }
     peer.onicecandidateerror = (e) => {
 
-            console.log("error1")
+        console.log("error1")
+        console.log(e)
+    }
+    peer.oniceconnectionstatechange = (e) => {
+        try {
+            const connectionStatus = peer.connectionState;
+            if (["disconnected", "failed", "closed"].includes(connectionStatus)) {
+                console.log("disconnected")
+            } else {
+                console.log("still connected")
+            }
+        } catch (e) {
             console.log(e)
         }
-        // peer.onnegotiationneeded = (e) => {
-        //     console.log("error2")
-        //     console.log(e)
-        // }
+    }
 
 }
 
 async function createPeer(id) {
-    const peer = new RTCPeerConnection({
-        iceServers: [{
-            urls: "stun:stun.stunprotocol.org"
-                // urls: "stun:stun.l.google.com:19302?transport=tcp"
-        }]
-    }, {
-        "mandatory": {
-            "OfferToReceiveAudio": true,
-            "OfferToReceiveVideo": true,
-        },
-        "optional": [],
-    });
+    const peer = new RTCPeerConnection(configurationPeerConnection, offerSdpConstraints);
     peer.addTransceiver("video", { direction: "recvonly" })
     peer.ontrack = handleTrackEvent;
     peer.onnegotiationneeded = async() => await handleNegotiationNeededEvent(peer, id);

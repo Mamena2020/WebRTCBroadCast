@@ -11,6 +11,30 @@ const { MediaStream } = require('wrtc');
 const { v4: uuidv4 } = require('uuid');
 const sdpTransform = require('sdp-transform');
 
+
+// const stuntUrl ="stun:stun.l.google.com:19302?transport=tcp"
+// {
+//     iceServers: [{
+//         // urls: "stun:stun.stunprotocol.org"
+//         urls: stuntUrl
+//     }]
+// },
+
+const configurationPeerConnection = {
+    iceServers: [{
+        urls: "stun:stun.stunprotocol.org"
+            // urls: "stun:stun.l.google.com:19302?transport=tcp"
+    }]
+}
+
+const offerSdpConstraints = {
+    "mandatory": {
+        "OfferToReceiveAudio": true,
+        "OfferToReceiveVideo": true,
+    },
+    "optional": [],
+}
+
 class Broadcaster {
     constructor(_id = null, _stream = new MediaStream(), _peer = new webrtc.RTCPeerConnection(),
         _consumers = []
@@ -38,47 +62,31 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // ------------------------------------------------------------------------------------------------- broadcasters
 app.post('/broadcast', async({ body }, res) => {
-    var id = uuidv4()
-        // broadcast.peer.ontrack = (e) => handleTrackEvent(e, broadcast);
-        //    broadcast.peer.ontrack = (e) => broadcast.stream = e.streams[0];
-        //     const desc = new webrtc.RTCSessionDescription(body.sdp);
-        //     await broadcast.peer.setRemoteDescription(desc);
-        //     const answer = await broadcast.peer.createAnswer();
-        //     await broadcast.peer.setLocalDescription(answer);
-        //     const payload = {
-        //         sdp: broadcast.peer.localDescription
-        //     }
-        //     broadcasters.push(broadcast);
-    await addBroadcast(id)
-        // let i = await broadcasters.findIndex((e) => e.id == body.id)
-    let i = await broadcastIndex(id)
-    if (i >= 0) {
-        broadcasters[i].peer.ontrack = (e) => broadcasters[i].stream = e.streams[0];
-
-        broadcasters[i].peer.onIceCandidate = (e) => {
-            if (e.candidate != null) {
-                console.log("----onIceCandidate")
-                console.log(JSON.stringify({
-                    'candidate': e.candidate.toString(),
-                    'sdpMid': e.sdpMid.toString(),
-                    'sdpMlineIndex': e.sdpMlineIndex,
-                }))
-                console.log("----onIceCandidate")
+    try {
+        var id = uuidv4()
+        await addBroadcast(id)
+        let i = await broadcastIndex(id)
+        if (i >= 0) {
+            broadcasters[i].peer.ontrack = (e) => broadcasters[i].stream = e.streams[0];
+            broadcasters[i].peer.oniceconnectionstatechange = (e) => {
+                try {
+                    const connectionStatus = broadcasters[i].peer.connectionState;
+                    if (["disconnected", "failed", "closed"].includes(connectionStatus)) {
+                        removeBroadcast(broadcasters[i].id)
+                    }
+                } catch (e) {
+                    console.log(e)
+                }
             }
+            await broadcastOnnegotiationneeded(i, body.sdp)
+            const payload = {
+                sdp: broadcasters[i].peer.localDescription,
+                id: id
+            }
+            res.json(payload);
         }
-        broadcasters[i].peer.onIceConnectionState = (e) => {
-            console.log("----onIceConnectionState")
-            console.log(e)
-            console.log("----onIceConnectionState")
-        }
+    } catch (e) {
 
-
-        await broadcastOnnegotiationneeded(i, body.sdp)
-        const payload = {
-            sdp: broadcasters[i].peer.localDescription,
-            id: id
-        }
-        res.json(payload);
     }
 });
 
@@ -88,34 +96,23 @@ async function addBroadcast(id) {
     var broadcast = new Broadcaster(
         id,
         new MediaStream(),
-        new webrtc.RTCPeerConnection({
-            iceServers: [{
-                urls: "stun:stun.stunprotocol.org"
-                    // urls: "stun:stun.l.google.com:19302?transport=tcp"
-            }]
-        }, {
-            "mandatory": {
-                "OfferToReceiveAudio": true,
-                "OfferToReceiveVideo": true,
-            },
-            "optional": [],
-        })
+        new webrtc.RTCPeerConnection(configurationPeerConnection, offerSdpConstraints)
     );
-
-
-
     await broadcasters.push(broadcast);
 }
 
 async function broadcastOnnegotiationneeded(i, sdp) {
-    const desc = new webrtc.RTCSessionDescription(sdp);
-    await broadcasters[i].peer.setRemoteDescription(desc);
-    const answer = await broadcasters[i].peer.createAnswer({ 'offerToReceiveVideo': 1 });
-    await broadcasters[i].peer.setLocalDescription(answer);
-    console.log(broadcasters[i].peer.localDescription.type)
-        // const session = sdpTransform.parse(String(broadcasters[i].peer.localDescription.sdp))
-    const session = sdpTransform.parse(String(answer.sdp))
-    console.log(session)
+    try {
+        const desc = new webrtc.RTCSessionDescription(sdp);
+        await broadcasters[i].peer.setRemoteDescription(desc);
+        const answer = await broadcasters[i].peer.createAnswer({ 'offerToReceiveVideo': 1 });
+        await broadcasters[i].peer.setLocalDescription(answer);
+        const session = sdpTransform.parse(String(answer.sdp))
+            // console.log(answer.sdp)
+            // console.log(session)
+    } catch (e) {
+        console.log(e)
+    }
 }
 
 
@@ -130,15 +127,14 @@ async function broadcastIndex(id) {
     return x;
 }
 
-// function handleTrackEvent(e, broadcast) {
-//     try {
-//         broadcast.stream = e.streams[0];
-//     } catch (e) {
+async function removeBroadcast(id) {
+    let i = await broadcastIndex(id)
+    if (i >= 0) {
+        broadcasters.splice(i, 1)
+    }
+}
 
-//     }
-// };
 
-var consumers = [];
 // ------------------------------------------------------------------------------------------------- consumer
 app.post("/consumer", async({ body }, res) => {
     console.log("consumer");
@@ -151,8 +147,20 @@ app.post("/consumer", async({ body }, res) => {
             x = await addConsumer(i)
         }
         if (x >= 0 && i >= 0) {
-
+            consumerInList(i)
             await consumerOnnegotiationneeded(i, x, body.sdp)
+            broadcasters[i].consumers[x].peer.oniceconnectionstatechange = (e) => {
+                try {
+                    if (broadcasters[i].consumers[x] != null) {
+                        const connectionStatus = broadcasters[i].consumers[x].peer.connectionState;
+                        if (["disconnected", "failed", "closed"].includes(connectionStatus)) {
+                            removeConsumer(i, broadcasters[i].consumers[x].id)
+                        }
+                    }
+                } catch (e) {
+                    console.log(e)
+                }
+            }
             const payload = {
                 sdp: broadcasters[i].consumers[x].peer.localDescription
             }
@@ -168,36 +176,41 @@ app.post("/consumer", async({ body }, res) => {
 });
 
 async function consumerOnnegotiationneeded(i, x, sdp) {
-    var desc = new webrtc.RTCSessionDescription(sdp);
-    await broadcasters[i].consumers[x].peer.setRemoteDescription(desc);
-    broadcasters[i].stream.getTracks().forEach(track => broadcasters[i].consumers[x].peer.addTrack(track, broadcasters[i].stream));
-    const answer = await broadcasters[i].consumers[x].peer.createAnswer();
-    await broadcasters[i].consumers[x].peer.setLocalDescription(answer);
-    const session = sdpTransform.parse(String(answer.sdp))
-    console.log(session)
-
+    try {
+        var desc = new webrtc.RTCSessionDescription(sdp);
+        await broadcasters[i].consumers[x].peer.setRemoteDescription(desc);
+        broadcasters[i].stream.getTracks().forEach(track => broadcasters[i].consumers[x].peer.addTrack(track, broadcasters[i].stream));
+        const answer = await broadcasters[i].consumers[x].peer.createAnswer({ 'offerToReceiveVideo': 1 });
+        await broadcasters[i].consumers[x].peer.setLocalDescription(answer);
+    } catch (e) {
+        console.log(e)
+    }
+    // const session = sdpTransform.parse(String(answer.sdp))
+    // console.log(session)
 }
 
 async function addConsumer(indexBroadcast) {
     var id = uuidv4()
-    var consumer = new Consumer(id, new webrtc.RTCPeerConnection({
-        iceServers: [{
-            urls: "stun:stun.stunprotocol.org"
-                // urls: "stun:stun.l.google.com:19302?transport=tcp"
-        }]
-    }, {
-        "mandatory": {
-            "OfferToReceiveAudio": true,
-            "OfferToReceiveVideo": true,
-        },
-        "optional": [],
-    }))
+    var consumer = new Consumer(id, new webrtc.RTCPeerConnection(configurationPeerConnection, offerSdpConstraints))
+    consumer.peer.oniceconnectionstatechange
 
     if (consumer.peer != undefined || consumer.peer != "undefined" || consumer.peer != null) {
         await broadcasters[indexBroadcast].consumers.push(consumer);
         return await consumerIndex(indexBroadcast, id)
     }
     return -1;
+}
+async function removeConsumer(indexBroadcast, id) {
+    try {
+        console.log("disconnected");
+        console.log("remove consumer: " + id)
+        let x = await consumerIndex(indexBroadcast, id)
+        if (x >= 0) {
+            await broadcasters[indexBroadcast].consumers.splice(x, 1)
+        }
+    } catch (e) {
+        console.log(e)
+    }
 }
 
 async function consumerIndex(indexBroadcast, id) {
@@ -209,6 +222,13 @@ async function consumerIndex(indexBroadcast, id) {
         }
     }
     return x;
+}
+async function consumerInList(indexBroadcast) {
+    console.log("------------------------ consumer list in this streaming")
+    broadcasters[indexBroadcast].consumers.forEach((e) => {
+        console.log(e.id)
+    })
+    console.log("--------------------------------------------------------")
 }
 
 // -------------------------------------------------------------------------------------------------
