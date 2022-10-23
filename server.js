@@ -43,13 +43,18 @@ const offerSdpConstraints = {
 }
 
 class Broadcaster {
-    constructor(_id = null, _stream = new MediaStream(), _peer = new webrtc.RTCPeerConnection(),
-        _consumers = []
+    constructor(
+        _id = null,
+        _stream = new MediaStream(),
+        _peer = new webrtc.RTCPeerConnection(),
+        _consumers = [],
+        _socket_id
     ) {
         this.id = _id
         this.stream = _stream
         this.peer = _peer
         this.consumers = _consumers
+        this.socket_id = _socket_id
     }
 }
 
@@ -78,7 +83,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.post('/broadcast', async({ body }, res) => {
     try {
         var id = uuidv4()
-        await addBroadcast(id)
+
+        await addBroadcast(id, body.socket_id)
         let i = await broadcastIndex(id)
         if (i >= 0) {
             broadcasters[i].peer.ontrack = (e) => broadcasters[i].stream = e.streams[0];
@@ -93,6 +99,24 @@ app.post('/broadcast', async({ body }, res) => {
                 }
             }
             await broadcastOnnegotiationneeded(i, body.sdp)
+
+            broadcasters[i].peer.onicecandidate = (e) => {
+                if (!e || !e.candidate) return;
+                try {
+                    var newCandidate = {
+                        'candidate': String(e.candidate.candidate),
+                        'sdpMid': String(e.candidate.sdpMid),
+                        'sdpMLineIndex': e.candidate.sdpMLineIndex,
+                    }
+                    console.log("ice candidate send to: " + broadcasters[i].socket_id)
+                        // console.log(broadcasters[i])
+                    console.log(newCandidate)
+                    addCandidateToClient(newCandidate, broadcasters[i].socket_id)
+                } catch (e) {
+                    console.log(e)
+                }
+
+            }
             const payload = {
                 sdp: broadcasters[i].peer.localDescription,
                 id: id
@@ -104,14 +128,16 @@ app.post('/broadcast', async({ body }, res) => {
     }
 });
 
-async function addBroadcast(id) {
+async function addBroadcast(id, socket_id) {
     console.log("new broadcast");
-
     var broadcast = new Broadcaster(
         id,
         new MediaStream(),
-        new webrtc.RTCPeerConnection(configurationPeerConnection, offerSdpConstraints)
+        new webrtc.RTCPeerConnection(configurationPeerConnection, offerSdpConstraints), [],
+        socket_id
     );
+    console.log(socket_id)
+    console.log(broadcast)
     await broadcasters.push(broadcast);
 }
 

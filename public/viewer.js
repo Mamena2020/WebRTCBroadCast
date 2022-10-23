@@ -37,6 +37,8 @@ async function createPeer(id) {
     peer.addTransceiver("video", { direction: "recvonly" })
     peer.ontrack = handleTrackEvent;
     peer.onnegotiationneeded = async() => await handleNegotiationNeededEvent(peer, id);
+
+
     return peer;
 }
 

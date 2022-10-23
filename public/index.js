@@ -23,13 +23,14 @@ window.onload = () => {
     }
 }
 
+var peer
 async function init() {
 
     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
     document.getElementById("video").srcObject = stream;
 
 
-    const peer = await createPeer();
+    peer = await createPeer();
 
 
     stream.getTracks().forEach(track => peer.addTrack(track, stream));
@@ -39,7 +40,7 @@ async function init() {
 async function createPeer() {
 
 
-    const peer = new RTCPeerConnection(configurationPeerConnection, offerSdpConstraints);
+    peer = new RTCPeerConnection(configurationPeerConnection, offerSdpConstraints);
     peer.onnegotiationneeded = async() => await handleNegotiationNeededEvent(peer);
 
     return peer;
@@ -53,7 +54,10 @@ async function handleNegotiationNeededEvent(peer) {
 
     const payload = {
         sdp: peer.localDescription,
+        socket_id: socket_id
     };
+
+    console.log("Send socket id: " + socket_id)
 
     const { data } = await axios.post('/broadcast', payload);
     const desc = new RTCSessionDescription(data.sdp);
@@ -105,15 +109,19 @@ const host = "http://192.168.1.9"
 const port = 5000
 
 var socket = io(host + ":" + port);
-socket.on('from-server', function(message) {
-    console.log(message)
-        // document.body.appendChild(
-        //     document.createTextNode(message.greeting)
-        // );
-    socket.emit('greeting-from-client', {
-        greeting: 'Hello Server'
-    });
+var socket_id
+
+socket.on('from-server', function(_socket_id) {
+    socket_id = _socket_id
+    console.log("me connected: " + socket_id)
 });
+
+socket.on("add-candidate-from-server", (message) => {
+    console.log("******add candidate from server")
+    console.log(message)
+    peer.addIceCandidate(new RTCIceCandidate(message))
+    console.log("@@@@@@add candidate from server")
+})
 
 function addCandidate(candidate) {
     socket.emit('add-candidate-broadcaster', {
