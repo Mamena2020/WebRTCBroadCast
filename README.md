@@ -48,6 +48,8 @@ WebRTC One To Many Broadcast (SFU)
     - https://www.kadekjayak.web.id/stun-turn-server/
     - https://testrtc.com/webrtc-api-trace/
     - https://stackoverflow.com/questions/42836729/how-to-fix-unreliable-webrtc-calling
+    - https://www.w3.org/2011/04/webrtc/wiki/images/archive/d/de/20151029000646%21RtpTransceivers_at_TPAC_2015.pdf
+    - https://blog.mozilla.org/webrtc/rtcrtptransceiver-explored/
 
   - Mediasoup ref ( not implemented yet ) 
     - https://mediasoup.org/

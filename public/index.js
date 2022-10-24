@@ -1,4 +1,6 @@
-// const stuntUrl = "stun:stun.l.google.com:19302"
+const host = "http://192.168.1.9"
+const port = 5000
+
 const configurationPeerConnection = {
     iceServers: [{
         urls: "stun:stun.stunprotocol.org"
@@ -15,6 +17,11 @@ const offerSdpConstraints = {
     "optional": [],
 }
 
+const mediaConstraints = {
+    video: true,
+    audio: true
+}
+
 var broadcast_id
 
 window.onload = () => {
@@ -26,7 +33,7 @@ window.onload = () => {
 var peer
 async function init() {
 
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    const stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
     document.getElementById("video").srcObject = stream;
 
 
@@ -105,8 +112,7 @@ async function handleNegotiationNeededEvent(peer) {
 }
 
 // -----------------------------------------------------------------------------
-const host = "http://192.168.1.9"
-const port = 5000
+
 
 var socket = io(host + ":" + port);
 var socket_id

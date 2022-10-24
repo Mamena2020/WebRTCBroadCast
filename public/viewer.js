@@ -1,3 +1,7 @@
+const host = "http://192.168.1.9"
+const port = 5000
+
+
 const configurationPeerConnection = {
     iceServers: [{
         urls: "stun:stun.stunprotocol.org"
@@ -11,6 +15,14 @@ const offerSdpConstraints = {
     },
     "optional": [],
 }
+
+// "video", { direction: "recvonly" } | recvonly-> recieve only
+// "video", { direction: "sendrecv" } | sendrecv-> send only
+// {send: bool, receive: bool}
+//{ direction: "sendrecv" }
+// { direction: "recvonly" }
+const addTransceiverConstraints = { direction: "recvonly" }
+
 window.onload = () => {
     showList();
 }
@@ -34,7 +46,9 @@ async function init(id) {
 
 async function createPeer(id) {
     peer = new RTCPeerConnection(configurationPeerConnection, offerSdpConstraints);
-    peer.addTransceiver("video", { direction: "recvonly" })
+
+    peer.addTransceiver("video", addTransceiverConstraints)
+    peer.addTransceiver("audio", addTransceiverConstraints)
     peer.ontrack = handleTrackEvent;
     peer.onnegotiationneeded = async() => await handleNegotiationNeededEvent(peer, id);
 
@@ -124,8 +138,6 @@ async function showList() {
     document.getElementById('list-container').innerHTML += html
 }
 // -----------------------------------------------------------------------------
-const host = "http://192.168.1.9"
-const port = 5000
 
 var socket = io(host + ":" + port);
 var socket_id
