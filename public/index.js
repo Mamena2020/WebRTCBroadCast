@@ -1,4 +1,4 @@
-// const host = "http://192.168.1.8"
+// const host = "http://192.168.1.7"
 const host = "http://localhost"
 const port = 3000
 

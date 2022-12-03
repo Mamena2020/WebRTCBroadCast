@@ -1,4 +1,4 @@
-// const host = "http://192.168.1.8"
+// const host = "http://192.168.1.7"
 const host = "http://localhost"
 const port = 3000
 
@@ -36,9 +36,39 @@ var consumer_id = ""
 var localCandidates = []
 var remoteCandidates = []
 
+
+async function watch(e) {
+    broadcast_id =  e.getAttribute("data");
+    await createPeer();
+    document.getElementById("text-container").innerHTML = "Streaming on id:" + broadcast_id
+}
+// -----------------------------------------------------------------------------
+async function showList() {
+    const data = await axios.get("/list-broadcast");
+    var html = `<ul style="list-style-type: none;">`;
+    data.data.forEach((e) => {
+        console.log(e);
+        html += `<li style="margin-top:4px;">
+        <button data='` + e + `' id='view-` + e + `'
+        onClick="watch(this)"
+        >Watch ` + e + `</button>
+        </li>`
+    });
+    html += "</ul>"
+    document.getElementById('list-container').innerHTML += html
+}
+
 async function createPeer() {
+
+
+
     localCandidates = []
     remoteCandidates = []
+    if(peer!=null && peer!=undefined)
+    {
+        return handleNegotiationNeededEvent(peer)
+    }
+    
     peer = new RTCPeerConnection(configurationPeerConnection, offerSdpConstraints);
 
     peer.addTransceiver("video", addTransceiverConstraints)
@@ -131,26 +161,6 @@ function iceCandidate()
 
 // -----------------------------------------------------------------------------
 
-async function watch(e) {
-    broadcast_id =  e.getAttribute("data");
-    await createPeer();
-    document.getElementById("text-container").innerHTML = "Streaming on id:" + broadcast_id
-}
-// -----------------------------------------------------------------------------
-async function showList() {
-    const data = await axios.get("/list-broadcast");
-    var html = `<ul style="list-style-type: none;">`;
-    data.data.forEach((e) => {
-        console.log(e);
-        html += `<li style="margin-top:4px;">
-        <button data='` + e + `' id='view-` + e + `'
-        onClick="watch(this)"
-        >Watch ` + e + `</button>
-        </li>`
-    });
-    html += "</ul>"
-    document.getElementById('list-container').innerHTML += html
-}
 // -----------------------------------------------------------------------------
 
 var socket = io(host + ":" + port);
