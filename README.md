@@ -6,7 +6,7 @@ Simple streaming web application. you can streaming and watch as consumer. This 
   - Watch a Streaming
 
 - WebRTC (SFU architecture) 
-<img src="public/img/sfu.png" width="420">
+<img src="public/img/sfu.png" width="500">
 
 - Clone this repo.
   - npm update
@@ -34,7 +34,8 @@ Simple streaming web application. you can streaming and watch as consumer. This 
     - "stun:stun.stunprotocol.org"
 
 
-- References
+#References
+
   - Code.
     - original code:
        - https://github.com/coding-with-chaim/webrtc-one-to-many
