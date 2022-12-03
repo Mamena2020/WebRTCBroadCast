@@ -6,14 +6,16 @@ Simple streaming web application. you can streaming and watch as consumer. This 
   - Watch a Streaming
 
 - WebRTC (SFU architecture) 
-<img src="public/img/sfu.png" width="370">
+<img src="public/img/sfu.png" width="420">
 
 - Clone this repo.
   - npm update
 
 - Secure ip local
-  - for custom ip local (server.js host) other than localhost, set http://ip to secure on browser chrome.
-    chrome://flags/#unsafely-treat-insecure-origin-as-secure
+  - for custom ip local (server.js host) other than localhost, then you have set to your local ip (http) as (https). because WebRTC won't work if ip is not secure (http).
+    to secure. open this link on your chrome
+     - chrome://flags/#unsafely-treat-insecure-origin-as-secure
+     - and paste your ip address 
 
 - Start server
   - node server or nodemon server
