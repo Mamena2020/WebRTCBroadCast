@@ -1,10 +1,10 @@
-const host = "http://192.168.1.9"
-const port = 5000
+// const host = "http://192.168.1.8"
+const host = "http://localhost"
+const port = 3000
 
 const configurationPeerConnection = {
     iceServers: [{
         urls: "stun:stun.stunprotocol.org"
-            // urls: "stun:stun.l.google.com:19302?transport=tcp"
     }]
 }
 
@@ -19,10 +19,12 @@ const offerSdpConstraints = {
 
 const mediaConstraints = {
     video: true,
-    audio: true
+    audio: false
 }
 
 var broadcast_id
+var localCandidates = []
+var remoteCandidates = []
 
 window.onload = () => {
     document.getElementById('my-button').onclick = () => {
@@ -35,11 +37,7 @@ async function init() {
 
     const stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
     document.getElementById("video").srcObject = stream;
-
-
     peer = await createPeer();
-
-
     stream.getTracks().forEach(track => peer.addTrack(track, stream));
 }
 
@@ -48,8 +46,10 @@ async function createPeer() {
 
 
     peer = new RTCPeerConnection(configurationPeerConnection, offerSdpConstraints);
+    localCandidates = []
+    remoteCandidates = []
+    iceCandidate()
     peer.onnegotiationneeded = async() => await handleNegotiationNeededEvent(peer);
-
     return peer;
 }
 
@@ -64,14 +64,42 @@ async function handleNegotiationNeededEvent(peer) {
         socket_id: socket_id
     };
 
+
     console.log("Send socket id: " + socket_id)
 
     const { data } = await axios.post('/broadcast', payload);
-    const desc = new RTCSessionDescription(data.sdp);
-    broadcast_id = data.id
-    document.getElementById("text-container").innerHTML = "Streaming id: " + data.id;
+    console.log(data.message)
+    const desc = new RTCSessionDescription(data.data.sdp);
+    broadcast_id = data.data.id
+    document.getElementById("text-container").innerHTML = "Streaming id: " +broadcast_id;
     await peer.setRemoteDescription(desc).catch(e => console.log(e));
+    // add local candidate to server
+    localCandidates.forEach((e)=>{
+        socket.emit("add-candidate-broadcast",{
+            id: broadcast_id,
+            candidate: e
+        })
+    })
+    // add remote candidate to local
+    remoteCandidates.forEach((e)=>{
+        peer.addIceCandidate(new RTCIceCandidate(e))
+    })
 
+}
+
+function iceCandidate()
+{
+
+    peer.onicecandidate = (e) => {
+        if (!e || !e.candidate) return;
+        // console.log(e)
+        var candidate = {
+                'candidate': String(e.candidate.candidate),
+                'sdpMid': String(e.candidate.sdpMid),
+                'sdpMLineIndex': e.candidate.sdpMLineIndex,
+            }
+            localCandidates.push(candidate)
+    }
 
     peer.onconnectionstatechange = (e) => {
         console.log("status")
@@ -82,32 +110,18 @@ async function handleNegotiationNeededEvent(peer) {
         console.log("error1")
         console.log(e)
     }
+
     peer.oniceconnectionstatechange = (e) => {
         try {
             const connectionStatus = peer.connectionState;
             if (["disconnected", "failed", "closed"].includes(connectionStatus)) {
                 console.log("disconnected")
             } else {
-                console.log("still connected")
+                console.log(" connected")
             }
         } catch (e) {
             console.log(e)
         }
-    }
-
-    peer.onicecandidate = (e) => {
-        if (!e || !e.candidate) return;
-        // console.log(e)
-        var newCandidate = {
-            'candidate': String(e.candidate.candidate),
-            'sdpMid': String(e.candidate.sdpMid),
-            'sdpMLineIndex': e.candidate.sdpMLineIndex,
-        }
-        console.log("ice candidate")
-        console.log(newCandidate)
-        addCandidate(newCandidate)
-        console.log("ice candidate2")
-        peer.addIceCandidate(new RTCIceCandidate(newCandidate))
     }
 }
 
@@ -122,16 +136,6 @@ socket.on('from-server', function(_socket_id) {
     console.log("me connected: " + socket_id)
 });
 
-socket.on("add-candidate-from-server", (message) => {
-    console.log("******add candidate from server")
-    console.log(message)
-    peer.addIceCandidate(new RTCIceCandidate(message))
-    console.log("@@@@@@add candidate from server")
+socket.on("candidate-from-server", (data) => {
+    remoteCandidates.push(data)
 })
-
-function addCandidate(candidate) {
-    socket.emit('add-candidate-broadcaster', {
-        candidate: candidate,
-        broadcast_id: broadcast_id
-    });
-}

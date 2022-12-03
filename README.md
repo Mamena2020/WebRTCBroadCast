@@ -1,7 +1,12 @@
 # WebRTCBroadCast
-WebRTC One To Many Broadcast (SFU)
+Simple streaming web application. you can streaming and watch as consumer. This Web App using <a href="https://webrtc.org">WebRTC</a> for media real-time communication, and <a href="https://socket.io">Socket.io</a> for signaling, also  SFU architecture which features the following data transmission processes between the media server and the endpoints (client).
 
+- Features
+  - Multiple Streaming
+  - Watch a Streaming
 
+- WebRTC (SFU architecture) 
+<img src="public/img/sfu.png" width="370">
 
 - Clone this repo.
   - npm update
@@ -19,7 +24,7 @@ WebRTC One To Many Broadcast (SFU)
   - for viewers
     - http://ip:port/viewer.html
 
-- Monitoring Status on browser
+- Monitoring WebRTC Status on browser
     - chrome://webrtc-internals/
 
 - Stunt Servers
@@ -29,7 +34,9 @@ WebRTC One To Many Broadcast (SFU)
 
 - References
   - Code.
-    - https://github.com/coding-with-chaim/webrtc-one-to-many
+    - original code:
+       - https://github.com/coding-with-chaim/webrtc-one-to-many
+
     - https://github.com/jamalag/flutter-webrtc-part2/blob/master/lib/main.dart
     - https://stackoverflow.com/questions/21233828/detecting-that-the-peers-browser-was-closed-in-a-webrtc-videochat
     - https://stackoverflow.com/questions/23325510/not-able-to-add-remote-ice-candidate-in-webrtc

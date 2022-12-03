@@ -1,5 +1,6 @@
-const host = "http://192.168.1.9"
-const port = 5000
+// const host = "http://192.168.1.8"
+const host = "http://localhost"
+const port = 3000
 
 
 const configurationPeerConnection = {
@@ -27,52 +28,83 @@ window.onload = () => {
     showList();
 }
 
-class TargetPeer {
-    constructor(_broadcast_id = null, _consumer_id = null) {
-        this.broadcast_id = _broadcast_id
-        this.consumer_id = _consumer_id
-    }
-}
-var targetPeer = new TargetPeer();
 
 
 var peer
-async function init(id) {
-    console.log("start");
-    peer = await createPeer(id);
+var broadcast_id = ""
+var consumer_id = ""
+var localCandidates = []
+var remoteCandidates = []
 
-
-}
-
-async function createPeer(id) {
+async function createPeer() {
+    localCandidates = []
+    remoteCandidates = []
     peer = new RTCPeerConnection(configurationPeerConnection, offerSdpConstraints);
 
     peer.addTransceiver("video", addTransceiverConstraints)
     peer.addTransceiver("audio", addTransceiverConstraints)
+    
+    
     peer.ontrack = handleTrackEvent;
-    peer.onnegotiationneeded = async() => await handleNegotiationNeededEvent(peer, id);
+    
+    
+    iceCandidate()
+
+    peer.onnegotiationneeded = async() => await handleNegotiationNeededEvent(peer);
 
 
     return peer;
 }
 
-async function handleNegotiationNeededEvent(peer, id) {
+async function handleNegotiationNeededEvent(peer) {
     const offer = await peer.createOffer({ 'offerToReceiveVideo': 1 });
     await peer.setLocalDescription(offer);
     const payload = {
         sdp: peer.localDescription,
-        id: id,
+        broadcast_id: broadcast_id,
         socket_id: socket_id
     };
     const { data } = await axios.post('/consumer', payload);
-    targetPeer = new TargetPeer(
-        data.targetPeer.broadcast_id,
-        data.targetPeer.consumer_id
-    );
-    console.log("targetPeer");
-    console.log(targetPeer);
-    const desc = new RTCSessionDescription(data.sdp);
+    console.log(data.message)
+    consumer_id=  data.data.id
+    
+    const desc = new RTCSessionDescription(data.data.sdp);
+
     await peer.setRemoteDescription(desc).catch(e => console.log(e));
+
+    // send local candidate to server
+    localCandidates.forEach((e)=>{
+        socket.emit("add-candidate-consumer",{
+            id: consumer_id,
+            candidate: e
+        })
+    })
+    // add remote candidate to local
+    remoteCandidates.forEach((e)=>{
+        peer.addIceCandidate(new RTCIceCandidate(e))
+    })
+   
+}
+
+function handleTrackEvent(e) {
+    console.log(e.streams[0])
+    document.getElementById("video").srcObject = e.streams[0];
+};
+
+function iceCandidate()
+{
+
+    peer.onicecandidate = (e) => {
+        if (!e || !e.candidate) return;
+        // console.log(e)
+        var candidate = {
+                'candidate': String(e.candidate.candidate),
+                'sdpMid': String(e.candidate.sdpMid),
+                'sdpMLineIndex': e.candidate.sdpMLineIndex,
+            }
+         localCandidates.push(candidate)
+    }
+
     peer.onconnectionstatechange = (e) => {
         console.log("status")
         console.log(e)
@@ -82,49 +114,31 @@ async function handleNegotiationNeededEvent(peer, id) {
         console.log("error1")
         console.log(e)
     }
+
     peer.oniceconnectionstatechange = (e) => {
         try {
             const connectionStatus = peer.connectionState;
             if (["disconnected", "failed", "closed"].includes(connectionStatus)) {
                 console.log("disconnected")
             } else {
-                console.log("still connected")
+                console.log(" connected")
             }
         } catch (e) {
             console.log(e)
         }
     }
-
-    peer.onicecandidate = (e) => {
-        if (!e || !e.candidate) return;
-        // console.log(e)
-        var newCandidate = {
-            'candidate': String(e.candidate.candidate),
-            'sdpMid': String(e.candidate.sdpMid),
-            'sdpMLineIndex': e.candidate.sdpMLineIndex,
-        }
-        console.log("ice candidate")
-        console.log(newCandidate)
-        addCandidate(newCandidate)
-        console.log("ice candidate2")
-        peer.addIceCandidate(new RTCIceCandidate(newCandidate))
-    }
 }
 
-function handleTrackEvent(e) {
-    console.log(e.streams[0])
-    document.getElementById("video").srcObject = e.streams[0];
-};
-
 // -----------------------------------------------------------------------------
-function watch(e) {
-    var id = e.getAttribute("data");
-    init(id)
-    document.getElementById("text-container").innerHTML = "Streaming on id:" + id
+
+async function watch(e) {
+    broadcast_id =  e.getAttribute("data");
+    await createPeer();
+    document.getElementById("text-container").innerHTML = "Streaming on id:" + broadcast_id
 }
 // -----------------------------------------------------------------------------
 async function showList() {
-    const data = await axios.get("/list");
+    const data = await axios.get("/list-broadcast");
     var html = `<ul style="list-style-type: none;">`;
     data.data.forEach((e) => {
         console.log(e);
@@ -146,16 +160,7 @@ socket.on('from-server', function(_socket_id) {
     socket_id = _socket_id
     console.log("me connected: " + socket_id)
 });
-socket.on("add-candidate-from-server", (message) => {
-    console.log("******add candidate from server")
-    console.log(message)
-    peer.addIceCandidate(new RTCIceCandidate(message))
-    console.log("@@@@@@add candidate from server")
+socket.on("candidate-from-server", (data) => {
+        remoteCandidates.push(data)
 })
 
-function addCandidate(candidate) {
-    socket.emit('add-candidate-consumer', {
-        candidate: candidate,
-        targetPeer: targetPeer
-    });
-}
