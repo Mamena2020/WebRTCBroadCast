@@ -1,5 +1,5 @@
 # WebRTCBroadCast
-Simple streaming web application. you can streaming and watch as consumer. This Web App using <a href="https://webrtc.org">WebRTC</a> for media real-time communication, and <a href="https://socket.io">Socket.io</a> for signaling, also  SFU architecture which features the following data transmission processes between the media server and the endpoints (client).
+Simple live streaming web application. you can streaming and watch as consumer. This Web App using <a href="https://webrtc.org">WebRTC</a> for media real-time communication, and <a href="https://socket.io">Socket.io</a> for signaling, also  SFU architecture which features the following data transmission processes between the media server and the endpoints (client).
 
 - Features
   - Multiple Streaming
