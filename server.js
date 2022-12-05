@@ -1,6 +1,6 @@
 const host = "localhost";
-// const host = "192.168.1.7"
 const port = "3000"
+// const host = "192.168.1.7"
 
 const express = require('express')
 const app = express()
@@ -16,6 +16,11 @@ const io = socketIO(server)
 app.use(express.static('public'))
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }))
+
+
+app.get("/stream",(req,res)=>{
+    res.sendFile('public/index.html', {root: __dirname })
+})
 
 server.listen(port,
     host,

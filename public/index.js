@@ -1,6 +1,3 @@
-// const host = "http://192.168.1.7"
-const host = "http://localhost"
-const port = 3000
 
 const configurationPeerConnection = {
     iceServers: [{
@@ -128,7 +125,7 @@ function iceCandidate()
 // -----------------------------------------------------------------------------
 
 
-var socket = io(host + ":" + port);
+var socket = io(Config.host + ":" + Config.port);
 var socket_id
 
 socket.on('from-server', function(_socket_id) {

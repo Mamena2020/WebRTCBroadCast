@@ -21,9 +21,12 @@ Simple live streaming web application. you can streaming and watch as consumer. 
 - Config
   - set your host & port
      - host & port
+        - public/config.js
         - server.js
-        - index.js
-        - viewer.js
+        ```
+          const host = "localhost";
+          const port = "3000"
+        ```
 
 - Start server
   - node server or nodemon server
