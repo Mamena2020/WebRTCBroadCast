@@ -13,8 +13,8 @@ Simple live streaming web application. you can streaming and watch as consumer. 
 
 
 - Secure ip local
-  - for custom ip local (server.js host) other than localhost, then you have set to your local ip (http) as (https). because WebRTC won't work if ip is not secure (http).
-    to secure. open this link on your chrome
+  - for custom ip local (server.js host) other than localhost, then you have to set your local ip (http) as (https). because WebRTC won't work if ip is not secure (http).
+    to secure local ip. open this link on your chrome
      - chrome://flags/#unsafely-treat-insecure-origin-as-secure
      - and paste your ip address 
 
